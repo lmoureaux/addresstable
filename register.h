@@ -20,7 +20,7 @@
 struct Register
 {
     /// \brief The address of the register.
-    std::uint32_t *address;
+    std::uint32_t address;
 
     /// \brief The mask of the register.
     std::uint32_t mask;
@@ -63,10 +63,13 @@ void Register::operator<<(std::uint32_t value) const
     // Check that we can write
     if (__builtin_expect(!canWrite, false)) {
         std::stringstream ss;
-        ss << "Cannot write to register at address " << address;
+        ss << "Cannot write to register at address 0x" << address;
         throw std::logic_error(ss.str());
     }
-    volatile std::uint32_t *ptr = address;
+
+    volatile std::uint32_t *ptr = nullptr;
+    ptr += (std::ptrdiff_t) address;
+
     if (mask == 0xffffffff) { // Shortcut
         *ptr = value;
     } else {
@@ -75,7 +78,7 @@ void Register::operator<<(std::uint32_t value) const
         if (__builtin_expect((value & ~(mask >> shift)) != 0, false)) {
             std::stringstream ss;
             ss << std::hex << "Value 0x" << value
-               << " out of bounds for register at address " << address
+               << " out of bounds for register at address 0x" << address
                << " with mask 0x" << mask;
             throw std::domain_error(ss.str());
         }
@@ -104,10 +107,12 @@ void Register::operator>>(std::uint32_t &value) const
     /* Assumption: The mask has no hole */
     if (__builtin_expect(!canRead, false)) {
         std::stringstream ss;
-        ss << "Cannot read from register at address " << address;
+        ss << std::hex << "Cannot read from register at address 0x" << address;
         throw std::logic_error(ss.str());
     }
-    volatile std::uint32_t *ptr = address;
+    volatile std::uint32_t *ptr = nullptr;
+    ptr += (std::ptrdiff_t) address;
+
     int shift = __builtin_ctz(mask);
     value = (*ptr & mask) >> shift;
 }
