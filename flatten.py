@@ -203,8 +203,8 @@ struct GeneratorTraits
     using type = decltype(std::declval<Generator>()(
         std::declval<std::uint32_t>(),
         std::declval<std::uint32_t>(),
-        std::declval<bool>,
-        std::declval<bool>));
+        std::declval<bool>(),
+        std::declval<bool>()));
 };
 
 constexpr std::uint32_t getAddress(std::uint32_t base, std::uint32_t local)
