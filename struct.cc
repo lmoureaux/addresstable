@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "registerstruct.h"
-#include "settings.h"
 
 template<class T, class Generator>
 constexpr auto switchGenerator(const T &, Generator &gen)
