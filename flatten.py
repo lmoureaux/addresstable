@@ -63,14 +63,8 @@ def nodeStructName(node, baseAddress):
     children. The name is the nodeName() with a hash of the content appended to
     cope with constructs like 'OH.OH'.
     '''
-    if len(node) == 0:
-        raise ValueError('Cannot create node hash for a value node')
-
-    data = ''
-    for child in node:
-        data += nodeDecl(child, baseAddress) + '\n'
     import hashlib
-    return nodeName(node) + '_' + hashlib.md5(data.encode()).hexdigest()[:4]
+    return nodeName(node) + '_' + hashlib.md5(node.text.encode()).hexdigest()[:4]
 
 def nodeStruct(node, baseAddress):
     '''
