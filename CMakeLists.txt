@@ -15,7 +15,16 @@ project(addresstable)
 #
 # add_executable(variable variable.cc)
 
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/registerstruct.h
+    COMMAND sh -c 'python3 -m flatten >registerstruct.h'
+    DEPENDS gem_amc_top.xml flatten.py
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+add_custom_target(registerstruct_h DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/registerstruct.h)
+
 add_executable(struct struct.cc)
+add_dependencies(struct registerstruct_h)
 
 # add_executable(ministruct ministruct.cc)
 
