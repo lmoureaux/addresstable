@@ -39,10 +39,9 @@ void collectAddresses(const T &t, std::vector<std::uint32_t> &vec)
     switchGenerator(t, gen);
 }
 
-struct CountGenerator
+struct IndexGenerator
 {
     std::size_t count = 0;
-
     constexpr std::size_t operator()(std::uint32_t addr,
                                      std::uint32_t mask,
                                      bool read,
@@ -53,10 +52,11 @@ struct CountGenerator
 };
 
 template<class T>
-constexpr std::size_t countAddresses(const T &t)
+constexpr std::size_t countRegisters(const T &t)
 {
-    switchGenerator<T, const CountGenerator>(t, CountGenerator{});
-    return 0;
+    IndexGenerator gen{};
+    switchGenerator<T, IndexGenerator>(t, gen);
+    return gen.count;
 }
 
 int main(int, char **)
@@ -64,6 +64,13 @@ int main(int, char **)
     std::cout << "*** struct ***" << std::endl;
 
     std::cout << "Loading took 0 ns" << std::endl;
+
+    std::cout << "There are "
+              << countRegisters(GEM_AMC)
+              << " registers, and "
+              << countRegisters(GEM_AMC.OH)
+              << " in the OH subtree alone."
+              << std::endl;
 
     auto start = std::chrono::high_resolution_clock::now();
     std::uint32_t sum = 0;
