@@ -117,4 +117,15 @@ void Register::operator>>(std::uint32_t &value) const
     value = (*ptr & mask) >> shift;
 }
 
+struct RegisterGenerator
+{
+    constexpr Register operator()(std::uint32_t addr,
+                                  std::uint32_t mask,
+                                  bool read,
+                                  bool write) const
+    {
+        return { addr, mask, read, write };
+    }
+};
+
 #endif // REGISTER_H

@@ -5,7 +5,7 @@ from rw_reg import parseInt
 
 ADDRESS_TABLE_TOP = 'gem_amc_top.xml'
 
-def nodeDecl(node):
+def nodeDecl(node, baseAddress):
     '''
     Returns C++ code to declare a node. This includes the node description as
     Doxygen comments and the node struct.
@@ -15,20 +15,20 @@ def nodeDecl(node):
         doc = '/** \\brief ' + node.get('description') + ' */\n'
 
     if len(node) == 0:
-        return doc + nodeType(node) + ' ' + nodeName(node) + ';'
+        return doc + nodeType(node, baseAddress) + ' ' + nodeName(node) + ';'
     elif node.get('generate') is None:
         decl = doc
         if len(node) > 0:
-            decl += nodeStruct(node) + ';\n'
+            decl += nodeStruct(node, baseAddress) + ';\n'
         decl += doc
-        decl += nodeType(node) + ' ' + nodeName(node) + ';'
+        decl += nodeType(node, baseAddress) + ' ' + nodeName(node) + ';'
         return decl
     else:
         decl = doc
         if len(node) > 0:
-            decl += nodeStruct(node) + ';\n'
+            decl += nodeStruct(node, baseAddress) + ';\n'
         decl += doc
-        decl += nodeType(node) + ' ' + nodeName(node) + ';'
+        decl += nodeType(node, baseAddress) + ' ' + nodeName(node) + ';'
         return decl
 
 def nodeName(node):
@@ -57,7 +57,7 @@ def nodeName(node):
             'Could not convert node id "{}" to a valid C++ identifier'.format(node.get('id')))
     return name
 
-def nodeStructName(node):
+def nodeStructName(node, baseAddress):
     '''
     Returns the name of the struct generated for a node. The node must have
     children. The name is the nodeName() with a hash of the content appended to
@@ -68,11 +68,11 @@ def nodeStructName(node):
 
     data = ''
     for child in node:
-        data += nodeDecl(child) + '\n'
+        data += nodeDecl(child, baseAddress) + '\n'
     import hashlib
     return nodeName(node) + '_' + hashlib.md5(data.encode()).hexdigest()[:4]
 
-def nodeStruct(node):
+def nodeStruct(node, baseAddress):
     '''
     Returns the declaration of the struct that corresponds to a node. The node
     must have children.
@@ -80,23 +80,52 @@ def nodeStruct(node):
     if len(node) == 0:
         raise ValueError('Cannot create node struct for a value node')
 
-    struct = 'struct ' + nodeStructName(node) + ' {\n'
+    structName = nodeStructName(node, baseAddress)
+    struct = '''
+    template<class {0}Generator = _M_Generator>
+    struct {0} {{
+        using _M_Generator = {0}Generator;
+        template<class T> using _M_self = {0}<T>;
+        '''.format(structName)
+
     for child in node:
-        struct += nodeDecl(child) + '\n'
+        struct += nodeDecl(child, baseAddress) + '\n'
+
+    # Constructor
+    struct += '''
+        constexpr {}(_M_Generator &gen, std::uint32_t base = {}):'''.format(
+            structName, hex(baseAddress))
+
+    for i in range(len(node)):
+        child = node[i]
+        struct += '\n          ' + nodeConstructor(child, baseAddress)
+        '''
+            {}(gen)'''.format(nodeName(child))
+        if i != len(node) - 1:
+            struct += ','
+
+    struct += '''
+    {}''' # Constructor body
+
     struct += '}'
     return struct
 
-def nodeType(node):
+def nodeBaseType(node, baseAddress):
+    '''
+    Returns the base type name for a node. This is the struct name or a generic
+    expression, without std::array<> wrapping.
+    '''
+    if len(node) > 0:
+        return nodeStructName(node, baseAddress) + '<>'
+    else:
+        return 'typename GeneratorTraits<_M_Generator>::type'
+
+def nodeType(node, baseAddress):
     '''
     Returns the type name for a node. This is the struct name if relevant, and
     is wrapped into 'std::array' for generated registers.
     '''
-    baseType = ''
-    if len(node) > 0:
-        baseType = nodeStructName(node)
-    else:
-        baseType = 'Register'
-
+    baseType = nodeBaseType(node, baseAddress)
     if node.get('generate') is None:
         return baseType
     else:
@@ -118,15 +147,12 @@ def checkMask(mask):
     if m != 0:
         raise ValueError('Mask {} has holes'.format(hex(mask)))
 
-def nodeValue(node, baseAddress = 0x0):
+def nodeInitializer(node, baseAddress):
     '''
-    Returns C++ code to initialize a node with the correct addresses.
-    'baseAddress' is the address of the parent node.
+    Constructs the initialization code for this node (used in constructor)
     '''
-    address = (parseInt(node.get('address')) or 0) + baseAddress
+    address = hex(parseInt(node.get('address')) or 0)
     if len(node) == 0:
-        addr = hex((address << 2) + 0x64000000) # Real address
-        #addr = hex(address) # Logical address
         mask = parseInt(node.get('mask', '0xffffffff'))
         checkMask(mask)
         read = 'r' in node.get('permission', '')
@@ -136,25 +162,28 @@ def nodeValue(node, baseAddress = 0x0):
                 'Register {} cannot be mask-written because it cannot be read'.format(nodeName(node)))
         perms = 'true, ' if read else 'false, '
         perms += 'true' if write else 'false'
-        return '{{ (std::uint32_t *) {}, {}, {} }}'.format(addr, hex(mask), perms)
-    elif node.get('generate') is None:
-        value = '{\n'
-        for child in node:
-            value += nodeValue(child, address) + ',\n'
-        value += '}\n'
-        return value
+        return 'gen(getAddress(base, {}), {}, {})'.format(
+            address, hex(mask), perms)
+    else:
+        return 'gen, base + {}'.format(address)
+
+def nodeConstructor(node, baseAddress):
+    '''
+    Returns C++ code to initialize a node with the correct addresses.
+    'baseAddress' is the address of the parent node.
+    '''
+    if node.get('generate') is None:
+        return '{}({})'.format(nodeName(node), nodeInitializer(node, baseAddress))
     else:
         generateSize = parseInt(node.get('generate_size'))
         generateAddressStep = parseInt(node.get('generate_address_step'))
 
-        value = '{{\n'
+        value = '{}({{\n'.format(nodeName(node))
         for i in range(generateSize):
-            value += '{\n'
-            address = baseAddress + generateAddressStep * i
-            for child in node:
-                value += nodeValue(child, address) + ',\n'
-            value += '},\n'
-        value += '}}\n'
+            value += '{}({}),\n'.format(
+                nodeBaseType(node, baseAddress),
+                nodeInitializer(node, baseAddress + generateAddressStep * i))
+        value += '})\n'
         return value
 
 tree = xml.parse(ADDRESS_TABLE_TOP)
@@ -163,6 +192,23 @@ print('''
 #include <array>
 
 #include "register.h"
+
+template<class Generator>
+struct GeneratorTraits
+{
+    using type = decltype(std::declval<Generator>()(
+        std::declval<std::uint32_t>(),
+        std::declval<std::uint32_t>(),
+        std::declval<bool>,
+        std::declval<bool>));
+};
+
+constexpr std::uint32_t getAddress(std::uint32_t base, std::uint32_t local)
+{
+    return ((base + local) << 2) + 0x64000000;
+}
 ''')
-print(nodeStruct(root) + ';')
-print('const ' + nodeType(root) + ' ' + nodeName(root) + ' = ' + nodeValue(root) + ';')
+print('using _M_Generator = const RegisterGenerator;')
+print('const constexpr _M_Generator gen;')
+print(nodeStruct(root, 0x0) + ';')
+print('const constexpr ' + nodeType(root, 0x0) + ' ' + nodeName(root) + '(gen, 0x0);')
