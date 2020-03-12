@@ -35,8 +35,8 @@
  * struct IndexGenerator
  * {
  *     std::size_t count = 0;
- *     constexpr std::size_t operator()(std::uint32_t addr, std::uint32_t mask,
- *                                      bool read, bool write)
+ *     std::size_t operator()(std::uint32_t addr, std::uint32_t mask,
+ *                            bool read, bool write)
  *     {
  *         return count++;
  *     }
@@ -76,17 +76,15 @@ void collectAddresses(const T &t, std::vector<std::uint32_t> &vec)
 struct IndexGenerator
 {
     std::size_t count = 0;
-    constexpr std::size_t operator()(std::uint32_t addr,
-                                     std::uint32_t mask,
-                                     bool read,
-                                     bool write)
+    std::size_t operator()(std::uint32_t addr, std::uint32_t mask,
+                           bool read, bool write)
     {
         return count++;
     }
 };
 
 template<class T>
-constexpr std::size_t countRegisters(const T &t)
+std::size_t countRegisters(const T &t)
 {
     IndexGenerator gen{};
     switchGenerator<T, IndexGenerator>(t, gen);
