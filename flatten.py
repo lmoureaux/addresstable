@@ -1,9 +1,19 @@
 #! /usr/bin/env python3
 
 import xml.etree.ElementTree as xml
-from rw_reg import parseInt
 
 ADDRESS_TABLE_TOP = 'gem_amc_top.xml'
+
+def parseInt(s):
+    if s is None:
+        return None
+    string = str(s)
+    if string.startswith('0x'):
+        return int(string, 16)
+    elif string.startswith('0b'):
+        return int(string, 2)
+    else:
+        return int(string)
 
 def nodeDecl(node, baseAddress):
     '''
