@@ -9,6 +9,40 @@
 
 #include "registerstruct.h"
 
+/**
+ * \brief Switches a register (sub)tree to a different \a generator.
+ *
+ * The \a generator of a register tree defines its contents. The default tree
+ * uses the \ref RegisterGenerator, which populates the tree with \ref Register
+ * objects. By switching to a different generator, custom types and values can
+ * be used.
+ *
+ * Given a generator class \c Generator, this function can be used as follows:
+ * ~~~~{.cc}
+ * Generator g;
+ * auto &tree = switchGenerator(GEM_AMC, g);
+ * ~~~~
+ * The returned tree reproduces the hierarchy of \c GEM_AMC using the new
+ * generator.
+ *
+ * Generators are created by defining a class with a public call operator,
+ * <tt>operator()(uint32_t addr, uint32_t mask, bool read, bool write)</tt>.
+ * When creating the tree, the call operator is executed for each register and
+ * its return value is stored at the corresponding location in the tree.
+ *
+ * The following generator assigns an index to every register:
+ * ~~~~{.cc}
+ * struct IndexGenerator
+ * {
+ *     std::size_t count = 0;
+ *     constexpr std::size_t operator()(std::uint32_t addr, std::uint32_t mask,
+ *                                      bool read, bool write)
+ *     {
+ *         return count++;
+ *     }
+ * };
+ * ~~~~
+ */
 template<class T, class Generator>
 constexpr auto switchGenerator(const T &, Generator &gen)
     -> typename T::template _M_self<Generator>
