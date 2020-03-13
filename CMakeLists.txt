@@ -32,3 +32,5 @@ add_dependencies(struct registerstruct_h)
 # add_executable(ministruct ministruct.cc)
 
 # add_executable(test_register test_register.cc)
+
+add_executable(memsvc_overhead memsvc_overhead.cc libmemsvc.c)
