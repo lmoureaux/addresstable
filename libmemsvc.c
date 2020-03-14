@@ -14,8 +14,8 @@
 #include "libmemsvc.h"
 
 uint32_t THE_REG = 0;
-#define REG32(baseptr, offset) (THE_REG)
-// #define REG32(baseptr, offset) (*((volatile uint32_t*)(((uint8_t*)baseptr)+(offset))))
+//#define REG32(baseptr, offset) (THE_REG)
+#define REG32(baseptr, offset) (*((volatile uint32_t*)(((uint8_t*)baseptr)+(offset))))
 
 struct memsvc_range {
   uint32_t start;
@@ -89,10 +89,12 @@ static struct memsvc_range *find_range(struct memsvc_handle *svc, uint32_t addr,
           cur->maplen += pagesize - (cur->maplen % pagesize);
 
         cur->map = mmap(NULL, cur->maplen, PROT_READ|(cur->readonly ? 0 : PROT_WRITE), MAP_SHARED, svc->memfd, cur->start);
-//         if (cur->map == MAP_FAILED) {
-//           cur->map = NULL;
-//           activate = 0;
-//         }
+#if 1
+        if (cur->map == MAP_FAILED) {
+          cur->map = NULL;
+          activate = 0;
+        }
+#endif
       }
 
       if (activate && !cur->c2creg_map) {
@@ -194,8 +196,8 @@ int memsvc_open(memsvc_handle_t *handle)
   svc->magic = MEMSVC_INVALID_HANDLE_MAGIC;
 
   *handle = svc;
-
-  FILE *f = fopen("/home/louis/VirtualBox VMs/fcweb_default_1496312351967_20442/ubuntu-yakkety-16.10-cloudimg.vmdk", "r"); // Why not
+#if 0
+  FILE *f = fopen("/proc/self/exe", "r"); // Why not
   if (!f) {
     set_error(svc, "Could not open file: ", errno);
     memsvc_invalidate(svc);
@@ -203,7 +205,7 @@ int memsvc_open(memsvc_handle_t *handle)
   }
   svc->memfd = fileno(f);
 
-#if 0
+#else
   int sockfd = socket(PF_UNIX, SOCK_STREAM, 0);
   if (sockfd < 0) {
     set_error(svc, "Socket creation failed: ", errno);
@@ -243,8 +245,8 @@ int memsvc_open(memsvc_handle_t *handle)
 
   /* Parse Config File & Init ranges
    */
-//   FILE *cf = fopen("/etc/memsvc.conf", "r");
-  FILE *cf = fopen("memsvc.conf", "r");
+   FILE *cf = fopen("/etc/memsvc.conf", "r");
+//  FILE *cf = fopen("memsvc.conf", "r");
   if (!cf) {
     set_error(svc, "Unable to open memsvc configuration file: ", errno);
     memsvc_invalidate(svc);
