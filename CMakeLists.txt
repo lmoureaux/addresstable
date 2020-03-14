@@ -37,3 +37,7 @@ add_dependencies(struct registerstruct_h)
 # add_executable(test_register test_register.cc)
 
 add_executable(memsvc_overhead memsvc_overhead.cc libmemsvc.c)
+
+add_executable(memhub_overhead memhub_overhead.cc memhub.cc libmemsvc.c)
+target_link_libraries(memhub_overhead -pthread)
+
