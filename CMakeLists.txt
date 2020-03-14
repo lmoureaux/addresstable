@@ -7,6 +7,8 @@ set(CMAKE_C_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
 # add_executable(map map.cc)
 #
 # add_executable(unordered_map unordered_map.cc)
