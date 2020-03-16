@@ -164,8 +164,8 @@ def nodeInitializer(node, baseAddress):
         if mask != 0xffffffff and write and not read:
             raise ValueError(
                 'Register {} cannot be mask-written because it cannot be read'.format(nodeName(node)))
-        perms = 'true, ' if read else 'false, '
-        perms += 'true' if write else 'false'
+        perms = 'std::true_type{}, ' if read else 'std::false_type{}, '
+        perms += 'std::true_type{}' if write else 'std::false_type{}'
         return 'gen(getAddress(base, {}), {}, {})'.format(
             address, hex(mask), perms)
     else:
@@ -194,6 +194,7 @@ tree = xml.parse(ADDRESS_TABLE_TOP)
 root = tree.getroot()[0]
 print('''
 #include <array>
+#include <type_traits>
 
 #include "register.h"
 
