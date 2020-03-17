@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 
 /**
  * \brief Represents a hardware register.
@@ -121,10 +122,26 @@ struct RegisterGenerator
 {
     constexpr Register operator()(std::uint32_t addr,
                                   std::uint32_t mask,
-                                  bool read,
-                                  bool write) const
+                                  std::true_type,
+                                  std::true_type) const
     {
-        return { addr, mask, read, write };
+        return { addr, mask, true, true };
+    }
+
+    constexpr Register operator()(std::uint32_t addr,
+                                  std::uint32_t mask,
+                                  std::true_type,
+                                  std::false_type) const
+    {
+        return { addr, mask, true, false };
+    }
+
+    constexpr Register operator()(std::uint32_t addr,
+                                  std::uint32_t mask,
+                                  std::false_type,
+                                  std::true_type) const
+    {
+        return { addr, mask, false, true };
     }
 };
 
