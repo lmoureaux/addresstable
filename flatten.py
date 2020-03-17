@@ -122,7 +122,14 @@ def nodeBaseType(node, baseAddress):
     if len(node) > 0:
         return nodeStructName(node, baseAddress) + '<>'
     else:
-        return 'typename GeneratorTraits<_M_Generator>::type'
+        read = 'r' in node.get('permission', '')
+        write = 'w' in node.get('permission', '')
+        perms = ''
+        if read:
+            perms = 'rw' if write else 'ro'
+        elif write:
+            perms = 'wo'
+        return 'typename GeneratorTraits<_M_Generator>::{}type'.format(perms)
 
 def nodeType(node, baseAddress):
     '''
@@ -201,11 +208,16 @@ print('''
 template<class Generator>
 struct GeneratorTraits
 {
+    template<class Read, class Write>
     using type = decltype(std::declval<Generator>()(
         std::declval<std::uint32_t>(),
         std::declval<std::uint32_t>(),
-        std::declval<bool>(),
-        std::declval<bool>()));
+        std::declval<Read>(),
+        std::declval<Write>()));
+
+    using rotype = type<std::true_type, std::false_type>;
+    using wotype = type<std::false_type, std::true_type>;
+    using rwtype = type<std::true_type, std::true_type>;
 };
 
 constexpr std::uint32_t getAddress(std::uint32_t base, std::uint32_t local)
