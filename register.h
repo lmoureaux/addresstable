@@ -18,24 +18,65 @@
  * \ref operator>> and \ref operator<<. Streaming operators were chosen to
  * remind the user that reads and writes are expensive operations.
  */
-struct Register
+struct RegisterBase
 {
     /// \brief The address of the register.
     std::uint32_t address;
 
+    explicit constexpr RegisterBase(std::uint32_t address): address(address)
+    {}
+};
+
+/**
+ * \brief Represents a read-only register.
+ */
+struct RORegister: public RegisterBase
+{
     /// \brief The mask of the register.
     std::uint32_t mask;
 
-    /// \brief Whether the register can be read from.
-    bool canRead;
-
-    /// \brief Whether the register can be written to.
-    bool canWrite;
-
-    inline void operator<<(std::uint32_t value) const;
+    explicit constexpr RORegister(std::uint32_t address, std::uint32_t mask):
+        RegisterBase(address),
+        mask(mask)
+    {}
 
     inline void operator>>(std::uint32_t &value) const;
 };
+
+/**
+ * \brief Represents a write-only register.
+ */
+struct WORegister: public RegisterBase
+{
+    explicit constexpr WORegister(std::uint32_t address): RegisterBase(address)
+    {}
+
+    inline void operator<<(std::uint32_t value) const;
+};
+
+/**
+ * \brief Represents a read-write register.
+ */
+struct RWRegister: public RORegister
+{
+    explicit constexpr RWRegister(std::uint32_t address, std::uint32_t mask):
+        RORegister(address, mask)
+    {}
+
+    inline void operator<<(std::uint32_t value) const;
+};
+
+/**
+ * \brief Writes a value to a register.
+ *
+ * Complexity: one write.
+ */
+void WORegister::operator<<(std::uint32_t value) const
+{
+    volatile std::uint32_t *ptr = nullptr;
+    ptr += (std::ptrdiff_t) address;
+    *ptr = value;
+}
 
 /**
  * \brief Writes a value to a register.
@@ -54,26 +95,15 @@ struct Register
  * \throws std::logic_error if the register is not writeable.
  * \throws std::domain_error if `value` is too wide for the mask.
  */
-void Register::operator<<(std::uint32_t value) const
+void RWRegister::operator<<(std::uint32_t value) const
 {
-    /*
-     * Assumptions:
-     *  - The mask has no hole
-     *  - A writeable, masked register is also readable
-     */
-    // Check that we can write
-    if (__builtin_expect(!canWrite, false)) {
-        std::stringstream ss;
-        ss << "Cannot write to register at address 0x" << address;
-        throw std::logic_error(ss.str());
-    }
-
     volatile std::uint32_t *ptr = nullptr;
     ptr += (std::ptrdiff_t) address;
 
     if (mask == 0xffffffff) { // Shortcut
         *ptr = value;
     } else {
+        // Assumption: The mask has no hole
         int shift = __builtin_ctz(mask);
         // Check bounds
         if (__builtin_expect((value & ~(mask >> shift)) != 0, false)) {
@@ -100,48 +130,41 @@ void Register::operator<<(std::uint32_t value) const
  *     new value in hw       00000111
  *
  * Complexity: one read.
- *
- * \throws std::logic_error if the register is not readable.
  */
-void Register::operator>>(std::uint32_t &value) const
+void RORegister::operator>>(std::uint32_t &value) const
 {
-    /* Assumption: The mask has no hole */
-    if (__builtin_expect(!canRead, false)) {
-        std::stringstream ss;
-        ss << std::hex << "Cannot read from register at address 0x" << address;
-        throw std::logic_error(ss.str());
-    }
     volatile std::uint32_t *ptr = nullptr;
     ptr += (std::ptrdiff_t) address;
 
+    // Assumption: The mask has no hole
     int shift = __builtin_ctz(mask);
     value = (*ptr & mask) >> shift;
 }
 
 struct RegisterGenerator
 {
-    constexpr Register operator()(std::uint32_t addr,
-                                  std::uint32_t mask,
-                                  std::true_type,
-                                  std::true_type) const
+    constexpr RWRegister operator()(std::uint32_t addr,
+                                    std::uint32_t mask,
+                                    std::true_type,
+                                    std::true_type) const
     {
-        return { addr, mask, true, true };
+        return RWRegister(addr, mask);
     }
 
-    constexpr Register operator()(std::uint32_t addr,
-                                  std::uint32_t mask,
-                                  std::true_type,
-                                  std::false_type) const
+    constexpr RORegister operator()(std::uint32_t addr,
+                                    std::uint32_t mask,
+                                    std::true_type,
+                                    std::false_type) const
     {
-        return { addr, mask, true, false };
+        return RORegister(addr, mask);
     }
 
-    constexpr Register operator()(std::uint32_t addr,
-                                  std::uint32_t mask,
-                                  std::false_type,
-                                  std::true_type) const
+    constexpr WORegister operator()(std::uint32_t addr,
+                                    std::uint32_t mask,
+                                    std::false_type,
+                                    std::true_type) const
     {
-        return { addr, mask, false, true };
+        return WORegister(addr);
     }
 };
 
