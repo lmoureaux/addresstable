@@ -102,7 +102,7 @@ def nodeStruct(node, baseAddress):
 
     for i in range(len(node)):
         child = node[i]
-        struct += '\n          ' + nodeConstructor(child, baseAddress)
+        struct += '\n          ' + nodeAddrConstructor(child, baseAddress)
         '''
             {}(gen)'''.format(nodeName(child))
         if i != len(node) - 1:
@@ -158,7 +158,7 @@ def checkMask(mask):
     if m != 0:
         raise ValueError('Mask {} has holes'.format(hex(mask)))
 
-def nodeInitializer(node, baseAddress):
+def nodeAddrInitializer(node, baseAddress):
     '''
     Constructs the initialization code for this node (used in constructor)
     '''
@@ -178,13 +178,13 @@ def nodeInitializer(node, baseAddress):
     else:
         return 'gen, base + {}'.format(address)
 
-def nodeConstructor(node, baseAddress):
+def nodeAddrConstructor(node, baseAddress):
     '''
     Returns C++ code to initialize a node with the correct addresses.
     'baseAddress' is the address of the parent node.
     '''
     if node.get('generate') is None:
-        return '{}({})'.format(nodeName(node), nodeInitializer(node, baseAddress))
+        return '{}({})'.format(nodeName(node), nodeAddrInitializer(node, baseAddress))
     else:
         generateSize = parseInt(node.get('generate_size'))
         generateAddressStep = parseInt(node.get('generate_address_step'))
@@ -193,7 +193,7 @@ def nodeConstructor(node, baseAddress):
         for i in range(generateSize):
             value += '{}({}),\n'.format(
                 nodeBaseType(node, baseAddress),
-                nodeInitializer(node, baseAddress + generateAddressStep * i))
+                nodeAddrInitializer(node, baseAddress + generateAddressStep * i))
         value += '})\n'
         return value
 
