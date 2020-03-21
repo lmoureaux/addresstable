@@ -45,9 +45,9 @@
  */
 template<class T, class Generator>
 constexpr auto switchGenerator(const T &, Generator &gen)
-    -> typename T::template _M_self<Generator>
+    -> typename T::template self_type<Generator>
 {
-    return typename T::template _M_self<Generator>(gen);
+    return typename T::template self_type<Generator>(gen);
 }
 
 struct CollectAddressesGenerator

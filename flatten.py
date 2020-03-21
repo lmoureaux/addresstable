@@ -89,7 +89,7 @@ def nodeStruct(node, baseAddress):
     template<class {0}Generator = _M_Generator>
     struct {0} {{
         using _M_Generator = {0}Generator;
-        template<class T> using _M_self = {0}<T>;
+        template<class T> using self_type = {0}<T>;
         '''.format(structName)
 
     for child in node:
