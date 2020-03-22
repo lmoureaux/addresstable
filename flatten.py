@@ -86,10 +86,15 @@ def nodeStruct(node, baseAddress):
 
     structName = nodeStructName(node, baseAddress)
     struct = '''
-    template<class {0}Generator = _M_Generator>
+    template<class {0}RO = read_only_type,
+             class {0}WO = write_only_type,
+             class {0}RW = read_write_type>
     struct {0} {{
-        using _M_Generator = {0}Generator;
-        template<class T> using self_type = {0}<T>;
+        using read_only_type = {0}RO;
+        using write_only_type = {0}WO;
+        using read_write_type = {0}RW;
+
+        template<class RO, class WO, class RW> using self_type = {0}<RO, WO, RW>;
         '''.format(structName)
 
     for child in node:
@@ -97,7 +102,7 @@ def nodeStruct(node, baseAddress):
 
     # Constructor
     struct += '''
-        constexpr {}(_M_Generator &gen, std::uint32_t base = {}):'''.format(
+        constexpr {}(std::uint32_t base = {}):'''.format(
             structName, hex(baseAddress))
 
     for i in range(len(node)):
@@ -124,12 +129,14 @@ def nodeBaseType(node, baseAddress):
     else:
         read = 'r' in node.get('permission', '')
         write = 'w' in node.get('permission', '')
-        perms = ''
-        if read:
-            perms = 'rw' if write else 'ro'
+        if read and write:
+            return 'read_write_type'
+        elif read:
+            return 'read_only_type'
         elif write:
-            perms = 'wo'
-        return 'typename GeneratorTraits<_M_Generator>::{}type'.format(perms)
+            return 'write_only_type'
+        else:
+            raise ValueError('Leaf node {} has no permissions'.format(node.get('id')))
 
 def nodeType(node, baseAddress):
     '''
@@ -171,12 +178,12 @@ def nodeAddrInitializer(node, baseAddress):
         if mask != 0xffffffff and write and not read:
             raise ValueError(
                 'Register {} cannot be mask-written because it cannot be read'.format(nodeName(node)))
-        perms = 'std::true_type{}, ' if read else 'std::false_type{}, '
-        perms += 'std::true_type{}' if write else 'std::false_type{}'
-        return 'gen(getAddress(base, {}), {}, {})'.format(
-            address, hex(mask), perms)
+        if read: # RO and RW
+            return 'getAddress(base, {}), {}'.format(address, hex(mask))
+        else: # WO, no mask
+            return 'getAddress(base, {})'.format(address)
     else:
-        return 'gen, base + {}'.format(address)
+        return 'base + {}'.format(address)
 
 def nodeAddrConstructor(node, baseAddress):
     '''
@@ -224,8 +231,10 @@ constexpr std::uint32_t getAddress(std::uint32_t base, std::uint32_t local)
 {
     return ((base + local) << 2) + 0x64000000;
 }
+
+using read_only_type = const RORegister;
+using write_only_type = const WORegister;
+using read_write_type = const RWRegister;
 ''')
-print('using _M_Generator = const RegisterGenerator;')
-print('const constexpr _M_Generator gen;')
 print(nodeStruct(root, 0x0) + ';')
-print('const constexpr ' + nodeType(root, 0x0) + ' ' + nodeName(root) + '(gen, 0x0);')
+print('const constexpr ' + nodeType(root, 0x0) + ' ' + nodeName(root) + '(0x0);')
