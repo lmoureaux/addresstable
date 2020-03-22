@@ -9,6 +9,17 @@
 
 #include "registerstruct.h"
 
+template<class Generator, class Other>
+using GeneratorSwitchResultType =
+    typename Other::template self_type<
+        // C++17 deprecation: use with std::invoke_result
+        typename std::result_of<
+            Generator&&(const typename Other::read_only_type&&)>::type,
+        typename std::result_of<
+            Generator&&(const typename Other::write_only_type&&)>::type,
+        typename std::result_of<
+            Generator&&(const typename Other::read_write_type&&)>::type>;
+
 /**
  * \brief Switches a register (sub)tree to a different \a generator.
  *
@@ -44,10 +55,10 @@
  * ~~~~
  */
 template<class T, class Generator>
-constexpr auto switchGenerator(const T &, Generator &gen)
-    -> typename T::template self_type<Generator>
+constexpr auto switchGenerator(const T &t, Generator &gen)
+    -> GeneratorSwitchResultType<Generator, T>
 {
-    return typename T::template self_type<Generator>(gen);
+    return GeneratorSwitchResultType<Generator, T>(gen, t);
 }
 
 struct CollectAddressesGenerator
@@ -56,12 +67,9 @@ struct CollectAddressesGenerator
 
     std::vector<std::uint32_t> &addresses;
 
-    void_t operator()(std::uint32_t addr,
-                      std::uint32_t mask,
-                      bool read,
-                      bool write)
+    void_t operator()(const RegisterBase &reg)
     {
-        addresses.push_back(addr);
+        addresses.push_back(reg.address);
         return {};
     }
 };
@@ -76,8 +84,7 @@ void collectAddresses(const T &t, std::vector<std::uint32_t> &vec)
 struct IndexGenerator
 {
     std::size_t count = 0;
-    std::size_t operator()(std::uint32_t addr, std::uint32_t mask,
-                           bool read, bool write)
+    std::size_t operator()(const RegisterBase &)
     {
         return count++;
     }
