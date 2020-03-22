@@ -100,7 +100,7 @@ def nodeStruct(node, baseAddress):
     for child in node:
         struct += nodeDecl(child, baseAddress) + '\n'
 
-    # Constructor
+    # Address-based constructor
     struct += '''
         constexpr {}(std::uint32_t base = {}):'''.format(
             structName, hex(baseAddress))
@@ -108,8 +108,24 @@ def nodeStruct(node, baseAddress):
     for i in range(len(node)):
         child = node[i]
         struct += '\n          ' + nodeAddrConstructor(child, baseAddress)
-        '''
-            {}(gen)'''.format(nodeName(child))
+        if i != len(node) - 1:
+            struct += ','
+
+    struct += '''
+    {}''' # Constructor body
+
+    # Generator-based constructor
+    struct += '''
+        template<
+            class Generator,
+            /* We take a generic type as a parameter instead of RO, WO, RW to
+             * allow for cv qualifiers. Otherwise we would need two constructors. */
+            class Other>
+        constexpr {0}(Generator &gen, Other &other):'''.format(structName)
+
+    for i in range(len(node)):
+        child = node[i]
+        struct += '\n          ' + nodeGenConstructor(child)
         if i != len(node) - 1:
             struct += ','
 
@@ -201,6 +217,35 @@ def nodeAddrConstructor(node, baseAddress):
             value += '{}({}),\n'.format(
                 nodeBaseType(node),
                 nodeAddrInitializer(node))
+        value += '})\n'
+        return value
+
+def nodeGenInitializer(node, otherName):
+    '''
+    Constructs the initialization code for this node (used in generator-based
+    constructor)
+    '''
+    if len(node) == 0:
+        return 'gen({})'.format(otherName)
+    else:
+        return 'gen, {}'.format(otherName)
+
+def nodeGenConstructor(node):
+    '''
+    Returns C++ code to initialize a node using a generator.
+    '''
+    name = nodeName(node)
+    otherName = 'other.{}'.format(name)
+    if node.get('generate') is None:
+        return '{}({})'.format(name, nodeGenInitializer(node, otherName))
+    else:
+        generateSize = parseInt(node.get('generate_size'))
+
+        value = '{}({{\n'.format(name)
+        for i in range(generateSize):
+            value += '{}({}),\n'.format(
+                nodeBaseType(node),
+                nodeGenInitializer(node, '{}[{}]'.format(otherName, i)))
         value += '})\n'
         return value
 
