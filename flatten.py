@@ -25,20 +25,20 @@ def nodeDecl(node, baseAddress):
         doc = '/** \\brief ' + node.get('description') + ' */\n'
 
     if len(node) == 0:
-        return doc + nodeType(node, baseAddress) + ' ' + nodeName(node) + ';'
+        return doc + nodeType(node) + ' ' + nodeName(node) + ';'
     elif node.get('generate') is None:
         decl = doc
         if len(node) > 0:
             decl += nodeStruct(node, baseAddress) + ';\n'
         decl += doc
-        decl += nodeType(node, baseAddress) + ' ' + nodeName(node) + ';'
+        decl += nodeType(node) + ' ' + nodeName(node) + ';'
         return decl
     else:
         decl = doc
         if len(node) > 0:
             decl += nodeStruct(node, baseAddress) + ';\n'
         decl += doc
-        decl += nodeType(node, baseAddress) + ' ' + nodeName(node) + ';'
+        decl += nodeType(node) + ' ' + nodeName(node) + ';'
         return decl
 
 def nodeName(node):
@@ -67,7 +67,7 @@ def nodeName(node):
             'Could not convert node id "{}" to a valid C++ identifier'.format(node.get('id')))
     return name
 
-def nodeStructName(node, baseAddress):
+def nodeStructName(node):
     '''
     Returns the name of the struct generated for a node. The node must have
     children. The name is the nodeName() with a hash of the content appended to
@@ -84,7 +84,7 @@ def nodeStruct(node, baseAddress):
     if len(node) == 0:
         raise ValueError('Cannot create node struct for a value node')
 
-    structName = nodeStructName(node, baseAddress)
+    structName = nodeStructName(node)
     struct = '''
     template<class {0}RO = read_only_type,
              class {0}WO = write_only_type,
@@ -119,13 +119,13 @@ def nodeStruct(node, baseAddress):
     struct += '}'
     return struct
 
-def nodeBaseType(node, baseAddress):
+def nodeBaseType(node):
     '''
     Returns the base type name for a node. This is the struct name or a generic
     expression, without std::array<> wrapping.
     '''
     if len(node) > 0:
-        return nodeStructName(node, baseAddress) + '<>'
+        return nodeStructName(node) + '<>'
     else:
         read = 'r' in node.get('permission', '')
         write = 'w' in node.get('permission', '')
@@ -138,12 +138,12 @@ def nodeBaseType(node, baseAddress):
         else:
             raise ValueError('Leaf node {} has no permissions'.format(node.get('id')))
 
-def nodeType(node, baseAddress):
+def nodeType(node):
     '''
     Returns the type name for a node. This is the struct name if relevant, and
     is wrapped into 'std::array' for generated registers.
     '''
-    baseType = nodeBaseType(node, baseAddress)
+    baseType = nodeBaseType(node)
     if node.get('generate') is None:
         return baseType
     else:
@@ -165,7 +165,7 @@ def checkMask(mask):
     if m != 0:
         raise ValueError('Mask {} has holes'.format(hex(mask)))
 
-def nodeAddrInitializer(node, baseAddress):
+def nodeAddrInitializer(node):
     '''
     Constructs the initialization code for this node (used in constructor)
     '''
@@ -191,7 +191,7 @@ def nodeAddrConstructor(node, baseAddress):
     'baseAddress' is the address of the parent node.
     '''
     if node.get('generate') is None:
-        return '{}({})'.format(nodeName(node), nodeAddrInitializer(node, baseAddress))
+        return '{}({})'.format(nodeName(node), nodeAddrInitializer(node))
     else:
         generateSize = parseInt(node.get('generate_size'))
         generateAddressStep = parseInt(node.get('generate_address_step'))
@@ -199,8 +199,8 @@ def nodeAddrConstructor(node, baseAddress):
         value = '{}({{\n'.format(nodeName(node))
         for i in range(generateSize):
             value += '{}({}),\n'.format(
-                nodeBaseType(node, baseAddress),
-                nodeAddrInitializer(node, baseAddress + generateAddressStep * i))
+                nodeBaseType(node),
+                nodeAddrInitializer(node))
         value += '})\n'
         return value
 
@@ -237,4 +237,4 @@ using write_only_type = const WORegister;
 using read_write_type = const RWRegister;
 ''')
 print(nodeStruct(root, 0x0) + ';')
-print('const constexpr ' + nodeType(root, 0x0) + ' ' + nodeName(root) + '(0x0);')
+print('const constexpr ' + nodeType(root) + ' ' + nodeName(root) + '(0x0);')
