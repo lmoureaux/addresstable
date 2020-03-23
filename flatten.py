@@ -259,24 +259,8 @@ tree = xml.parse(ADDRESS_TABLE_TOP)
 root = tree.getroot()[0]
 print('''
 #include <array>
-#include <type_traits>
 
 #include "register.h"
-
-template<class Generator>
-struct GeneratorTraits
-{
-    template<class Read, class Write>
-    using type = decltype(std::declval<Generator>()(
-        std::declval<std::uint32_t>(),
-        std::declval<std::uint32_t>(),
-        std::declval<Read>(),
-        std::declval<Write>()));
-
-    using rotype = type<std::true_type, std::false_type>;
-    using wotype = type<std::false_type, std::true_type>;
-    using rwtype = type<std::true_type, std::true_type>;
-};
 
 constexpr std::uint32_t getAddress(std::uint32_t base, std::uint32_t local)
 {
