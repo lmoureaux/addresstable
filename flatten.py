@@ -3,6 +3,7 @@
 import xml.etree.ElementTree as xml
 
 ADDRESS_TABLE_TOP = 'gem_amc_top.xml'
+ALREADY_DECLARED = set()
 
 def parseInt(s):
     if s is None:
@@ -28,16 +29,10 @@ def nodeDecl(node, baseAddress):
         return doc + nodeType(node) + ' ' + nodeName(node) + ';'
     elif node.get('generate') is None:
         decl = doc
-        if len(node) > 0:
-            decl += nodeStruct(node, baseAddress) + ';\n'
-        decl += doc
         decl += nodeType(node) + ' ' + nodeName(node) + ';'
         return decl
     else:
         decl = doc
-        if len(node) > 0:
-            decl += nodeStruct(node, baseAddress) + ';\n'
-        decl += doc
         decl += nodeType(node) + ' ' + nodeName(node) + ';'
         return decl
 
@@ -85,7 +80,18 @@ def nodeStruct(node, baseAddress):
         raise ValueError('Cannot create node struct for a value node')
 
     structName = nodeStructName(node)
-    struct = '''
+
+    if structName in ALREADY_DECLARED:
+        return ''
+    else:
+        ALREADY_DECLARED.add(structName)
+
+    struct = ''
+    for child in node:
+        if len(child) > 0:
+            struct += nodeStruct(child, baseAddress) + ';\n'
+
+    struct += '''
     template<class {0}RO = read_only_type,
              class {0}WO = write_only_type,
              class {0}RW = read_write_type>
@@ -141,7 +147,7 @@ def nodeBaseType(node):
     expression, without std::array<> wrapping.
     '''
     if len(node) > 0:
-        return nodeStructName(node) + '<>'
+        return nodeStructName(node) + '<read_only_type, write_only_type, read_write_type>'
     else:
         read = 'r' in node.get('permission', '')
         write = 'w' in node.get('permission', '')
