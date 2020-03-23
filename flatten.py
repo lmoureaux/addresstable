@@ -187,11 +187,11 @@ def checkMask(mask):
     if m != 0:
         raise ValueError('Mask {} has holes'.format(hex(mask)))
 
-def nodeAddrInitializer(node):
+def nodeAddrInitializer(node, delta = 0):
     '''
     Constructs the initialization code for this node (used in constructor)
     '''
-    address = hex(parseInt(node.get('address')) or 0)
+    address = hex(delta + (parseInt(node.get('address')) or 0))
     if len(node) == 0:
         mask = parseInt(node.get('mask', '0xffffffff'))
         checkMask(mask)
@@ -222,7 +222,7 @@ def nodeAddrConstructor(node, baseAddress):
         for i in range(generateSize):
             value += '{}({}),\n'.format(
                 nodeBaseType(node),
-                nodeAddrInitializer(node))
+                nodeAddrInitializer(node, generateAddressStep * i))
         value += '})\n'
         return value
 
