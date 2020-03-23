@@ -108,7 +108,7 @@ def nodeStruct(node, baseAddress):
 
     # Address-based constructor
     struct += '''
-        constexpr {}(std::uint32_t base = {}):'''.format(
+        constexpr {}(const DoNotUseTag &, std::uint32_t base):'''.format(
             structName, hex(baseAddress))
 
     for i in range(len(node)):
@@ -205,7 +205,7 @@ def nodeAddrInitializer(node, delta = 0):
         else: # WO, no mask
             return 'getAddress(base, {})'.format(address)
     else:
-        return 'base + {}'.format(address)
+        return 'DoNotUseTag{{}}, base + {}'.format(address)
 
 def nodeAddrConstructor(node, baseAddress):
     '''
@@ -262,6 +262,8 @@ print('''
 
 #include "register.h"
 
+struct DoNotUseTag {};
+
 constexpr std::uint32_t getAddress(std::uint32_t base, std::uint32_t local)
 {
     return ((base + local) << 2) + 0x64000000;
@@ -272,4 +274,4 @@ using write_only_type = const WORegister;
 using read_write_type = const RWRegister;
 ''')
 print(nodeStruct(root, 0x0) + ';')
-print('const constexpr ' + nodeType(root) + ' ' + nodeName(root) + '(0x0);')
+print('const constexpr ' + nodeType(root) + ' ' + nodeName(root) + '(DoNotUseTag{}, 0x0);')
