@@ -92,13 +92,13 @@ def nodeStruct(node, baseAddress):
             struct += nodeStruct(child, baseAddress) + ';\n'
 
     struct += '''
-    template<class {0}RO = read_only_type,
-             class {0}WO = write_only_type,
-             class {0}RW = read_write_type>
+    template<class ROType = read_only_type,
+             class WOType = write_only_type,
+             class RWType = read_write_type>
     struct {0} {{
-        using read_only_type = {0}RO;
-        using write_only_type = {0}WO;
-        using read_write_type = {0}RW;
+        using read_only_type = ROType;
+        using write_only_type = WOType;
+        using read_write_type = RWType;
 
         template<class RO, class WO, class RW> using self_type = {0}<RO, WO, RW>;
         '''.format(structName)
