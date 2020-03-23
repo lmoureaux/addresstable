@@ -126,7 +126,21 @@ def nodeStruct(node, baseAddress):
             class Generator,
             /* We take a generic type as a parameter instead of RO, WO, RW to
              * allow for cv qualifiers. Otherwise we would need two constructors. */
-            class Other>
+            class Other,
+            /* Check that Other is of the same type as *this except maybe for
+             * template parameters and cv qualifiers. */
+            typename std::enable_if<
+                std::is_same<
+                    typename Other::template self_type<
+                        read_only_type,
+                        write_only_type,
+                        read_write_type>,
+                    {0}<read_only_type,
+                        write_only_type,
+                        read_write_type>
+                >::value,
+                int
+            >::type = 0>
         constexpr {0}(Generator &gen, Other &other):'''.format(structName)
 
     for i in range(len(node)):
