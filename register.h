@@ -53,10 +53,14 @@ struct WORegister: public RegisterBase
 /**
  * \brief Represents a read-write register.
  */
-struct RWRegister: public RORegister
+struct RWRegister: public RegisterBase
 {
+    /// \brief The mask of the register.
+    std::uint32_t mask;
+
     explicit constexpr RWRegister(std::uint32_t address, std::uint32_t mask):
-        RORegister(address, mask)
+        RegisterBase(address),
+        mask(mask)
     {}
 };
 
