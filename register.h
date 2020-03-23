@@ -39,8 +39,6 @@ struct RORegister: public RegisterBase
         RegisterBase(address),
         mask(mask)
     {}
-
-    inline void operator>>(std::uint32_t &value) const;
 };
 
 /**
@@ -50,8 +48,6 @@ struct WORegister: public RegisterBase
 {
     explicit constexpr WORegister(std::uint32_t address): RegisterBase(address)
     {}
-
-    inline void operator<<(std::uint32_t value) const;
 };
 
 /**
@@ -62,10 +58,10 @@ struct RWRegister: public RORegister
     explicit constexpr RWRegister(std::uint32_t address, std::uint32_t mask):
         RORegister(address, mask)
     {}
-
-    inline void operator<<(std::uint32_t value) const;
 };
 
+#if 0
+Docs may be useful one day
 /**
  * \brief Writes a value to a register.
  *
@@ -140,6 +136,7 @@ void RORegister::operator>>(std::uint32_t &value) const
     int shift = __builtin_ctz(mask);
     value = (*ptr & mask) >> shift;
 }
+#endif
 
 struct RegisterGenerator
 {
