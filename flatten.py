@@ -74,7 +74,7 @@ def nodeStructName(node):
     cope with constructs like 'OH.OH'.
     '''
     import hashlib
-    return nodeName(node) + '_' + hashlib.md5(node.text.encode()).hexdigest()[:4]
+    return nodeName(node) + '_' + hashlib.md5(xml.tostring(node)).hexdigest()[:4]
 
 def nodeStruct(node, baseAddress):
     '''
